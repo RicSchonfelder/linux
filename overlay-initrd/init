@@ -1,0 +1,150 @@
+#!/bin/busybox sh
+# ============================================================
+#  /init  -  primeiro processo (initramfs)
+#  Linux custom (tvbox).
+#
+#  Modos (cmdline linuxmode=...):
+#    live    (padrao) overlayfs: squashfs (ro) + RAM
+#    toram            copia tudo para a RAM
+#    rootdir          usa o squashfs direto
+#
+#  Persistencia (cmdline persist=auto|none|/dev/xxx):
+#    usa a particao rotulada PERSIST como camada gravavel (upperdir),
+#    tornando o sistema PERMANENTE (instalado). Sem isso, a camada
+#    gravavel fica na RAM (descartada no reboot).
+# ============================================================
+export PATH=/bin:/sbin
+BB=/bin/busybox
+
+$BB mount -t proc proc /proc 2>/dev/null
+$BB mount -t sysfs sysfs /sys 2>/dev/null
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null
+$BB mkdir -p /dev/pts /run /newroot /mnt/media /mnt/rootfs /ram /mnt/persist
+$BB mount -t devpts devpts /dev/pts 2>/dev/null
+
+echo ""
+echo "  Linux (custom, tvbox)  -  iniciando..."
+echo ""
+
+CMDLINE="$($BB cat /proc/cmdline)"
+get_param() { echo "$CMDLINE" | $BB tr ' ' '\n' | $BB grep -m1 "^$1=" | $BB cut -d= -f2-; }
+MODE="$(get_param linuxmode)";   [ -n "$MODE" ] || MODE=live
+MEDIA_DEV="$(get_param linuxmedia)"
+PERSIST="$(get_param persist)";  [ -n "$PERSIST" ] || PERSIST=auto
+
+media_ok() {
+    [ -f "$1/linux/rootfs.squashfs" ] && return 0
+    [ -f "$1/rootfs.squashfs" ] && return 0
+    return 1
+}
+try_mount() {
+    $BB mount -o ro "$1" /mnt/media 2>/dev/null && return 0
+    for t in iso9660 vfat ext4 ext2; do
+        $BB mount -t "$t" -o ro "$1" /mnt/media 2>/dev/null && return 0
+    done
+    return 1
+}
+find_media() {
+    if [ -n "$MEDIA_DEV" ] && [ -b "$MEDIA_DEV" ]; then
+        try_mount "$MEDIA_DEV" && media_ok /mnt/media && { echo "$MEDIA_DEV"; return 0; }
+        $BB umount /mnt/media 2>/dev/null
+    fi
+    for dev in /dev/sr0 /dev/sda /dev/sdb /dev/sdc /dev/sdd \
+               /dev/sd*[0-9] /dev/mmcblk*p* /dev/nvme*p*; do
+        [ -b "$dev" ] || continue
+        try_mount "$dev" || continue
+        if media_ok /mnt/media; then echo "$dev"; return 0; fi
+        $BB umount /mnt/media 2>/dev/null
+    done
+    return 1
+}
+# acha particao de persistencia (rotulo PERSIST) e devolve o device
+label_of() { $BB blkid "$1" 2>/dev/null | $BB sed -n 's/.*LABEL="\([^"]*\)".*/\1/p'; }
+find_persist() {
+    case "$PERSIST" in
+        none) return 1 ;;
+        /dev/*) [ -b "$PERSIST" ] && { echo "$PERSIST"; return 0; }; return 1 ;;
+    esac
+    for dev in /dev/sda /dev/sdb /dev/sdc /dev/sdd \
+               /dev/sd*[0-9] /dev/mmcblk*p[0-9] /dev/nvme*p[0-9]; do
+        [ -b "$dev" ] || continue
+        [ "$(label_of "$dev")" = "PERSIST" ] && { echo "$dev"; return 0; }
+    done
+    return 1
+}
+
+MEDIA="$(find_media)"
+if [ -z "$MEDIA" ]; then
+    echo "ERRO: midia de boot (rootfs.squashfs) nao encontrada."
+    $BB cat /proc/partitions 2>/dev/null
+    $BB ls -l /dev 2>/dev/null | $BB grep -E "^(b|c) " | $BB head -40
+    echo "Dica: use linuxmedia=/dev/sdXn no cmdline."
+    exec $BB sh
+fi
+echo ">> midia de boot: $MEDIA"
+
+if [ -f /mnt/media/linux/rootfs.squashfs ]; then
+    SQFS=/mnt/media/linux/rootfs.squashfs
+else
+    SQFS=/mnt/media/rootfs.squashfs
+fi
+
+$BB mount -t squashfs -o loop,ro "$SQFS" /mnt/rootfs || {
+    echo "ERRO: falha ao montar squashfs"; exec $BB sh; }
+
+move_mounts() {
+    $BB mkdir -p "$1/proc" "$1/sys" "$1/dev" "$1/run" "$1/tmp"
+    $BB mount --move /proc "$1/proc" 2>/dev/null
+    $BB mount --move /sys  "$1/sys"  2>/dev/null
+    $BB mount --move /dev  "$1/dev"  2>/dev/null
+    $BB mount --move /run  "$1/run"  2>/dev/null
+}
+
+# resolve a camada gravavel (upperdir/workdir)
+setup_upper() {
+    PDEV="$(find_persist)"
+    if [ -n "$PDEV" ]; then
+        $BB mount -t auto "$PDEV" /mnt/persist 2>/dev/null || \
+        $BB mount -t ext4 "$PDEV" /mnt/persist 2>/dev/null
+        if $BB mount | $BB grep -q " /mnt/persist "; then
+            $BB mkdir -p /mnt/persist/linux-upper /mnt/persist/linux-work
+            UPPER=/mnt/persist/linux-upper
+            WORK=/mnt/persist/linux-work
+            echo ">> persistencia: $PDEV (PERMANENTE)"
+            return 0
+        fi
+    fi
+    $BB mount -t tmpfs tmpfs /ram
+    $BB mkdir -p /ram/upper /ram/work
+    UPPER=/ram/upper
+    WORK=/ram/work
+    echo ">> persistencia: RAM (temporaria)"
+}
+
+case "$MODE" in
+  toram)
+    echo ">> modo TORAM: copiando para a RAM..."
+    $BB mount -t tmpfs -o size=90% tmpfs /newroot || $BB mount -t tmpfs tmpfs /newroot
+    $BB cp -a /mnt/rootfs/. /newroot/ 2>/dev/null
+    echo ">> copia concluida."
+    move_mounts /newroot
+    exec $BB switch_root /newroot /sbin/init
+    ;;
+
+  rootdir)
+    echo ">> modo ROOTDIR: usando squashfs direto"
+    move_mounts /mnt/rootfs
+    exec $BB switch_root /mnt/rootfs /sbin/init
+    ;;
+
+  live|*)
+    echo ">> modo LIVE: overlayfs"
+    setup_upper
+    $BB mount -t overlay overlay \
+        -o lowerdir=/mnt/rootfs,upperdir=$UPPER,workdir=$WORK \
+        /newroot || { echo "ERRO overlay"; exec $BB sh; }
+    echo ">> sistema pronto. entrando..."
+    move_mounts /newroot
+    exec $BB switch_root /newroot /sbin/init
+    ;;
+esac

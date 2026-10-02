@@ -1,0 +1,185 @@
+# ============================================================
+#  Linux custom - kernel enxuto p/ TV box Intel Cherry Trail
+#  (Atom x5-Z8350). Headless: SSH + opencode + dev.
+#  Gerado a partir do inventario real de hardware da box.
+#  Metodo: make tinyconfig + merge deste fragmento + olddefconfig
+# ============================================================
+
+# --- Plataforma x86-64 / SMP ---
+CONFIG_64BIT=y
+CONFIG_SMP=y
+CONFIG_NR_CPUS=8
+CONFIG_X86_MPPARSE=y
+CONFIG_GENERIC_CPU=y
+
+# --- Compressao / tamanho ---
+CONFIG_KERNEL_XZ=y
+CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+CONFIG_KALLSYMS=n
+
+# --- ACPI (obrigatorio: tudo e enumerado por ACPI) ---
+CONFIG_ACPI=y
+CONFIG_ACPI_AC=y
+CONFIG_ACPI_BUTTON=y
+CONFIG_ACPI_PROCESSOR=y
+CONFIG_ACPI_HOTPLUG_CPU=y
+CONFIG_ACPI_THERMAL=y
+
+# --- PCI + MSI ---
+CONFIG_PCI=y
+CONFIG_PCI_MSI=y
+CONFIG_PCI_QUIRKS=y
+
+# --- Timers / relogio ---
+CONFIG_HIGH_RES_TIMERS=y
+CONFIG_HPET_TIMER=y
+CONFIG_HZ_1000=y
+CONFIG_HZ=1000
+
+# --- RTC CMOS (hardware tem /dev/rtc0) ---
+CONFIG_RTC_CLASS=y
+CONFIG_RTC_HCTOSYS=y
+CONFIG_RTC_DRV_CMOS=y
+
+# --- CPU freq / idle (economia de energia no Atom) ---
+CONFIG_CPU_FREQ=y
+CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y
+CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y
+CONFIG_X86_ACPI_CPUFREQ=y
+CONFIG_CPU_IDLE=y
+CONFIG_CPU_IDLE_GOV_MENU=y
+CONFIG_INTEL_IDLE=y
+
+# --- Console serial LPSS (8250_dw) ---
+CONFIG_TTY=y
+CONFIG_UNIX98_PTYS=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_8250_DW=y
+CONFIG_SERIAL_8250_PCI=y
+CONFIG_VT=y
+CONFIG_VT_CONSOLE=y
+CONFIG_DUMMY_CONSOLE=y
+
+# --- Framebuffer EFI (saida HDMI sem i915/drm) ---
+CONFIG_FB=y
+CONFIG_FB_EFI=y
+CONFIG_FRAMEBUFFER_CONSOLE=y
+CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y
+
+# --- Input (botao power) ---
+CONFIG_INPUT=y
+CONFIG_INPUT_EVDEV=y
+CONFIG_INPUT_KEYBOARD=y
+
+# --- Block / storage eMMC via SDHCI ACPI ---
+CONFIG_BLOCK=y
+CONFIG_BLK_DEV_LOOP=y
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_RD_XZ=y
+CONFIG_RD_GZIP=y
+CONFIG_MMC=y
+CONFIG_MMC_BLOCK=y
+CONFIG_MMC_SDHCI=y
+CONFIG_MMC_SDHCI_ACPI=y
+
+# --- SCSI base (exigido por usb-storage) ---
+CONFIG_SCSI=y
+CONFIG_BLK_DEV_SD=y
+CONFIG_BLK_DEV_SR=y
+
+# --- Particoes ---
+CONFIG_MSDOS_PARTITION=y
+CONFIG_EFI_PARTITION=y
+
+# --- USB3 xHCI + pendrive ---
+CONFIG_USB_SUPPORT=y
+CONFIG_USB=y
+CONFIG_USB_XHCI_HCD=y
+CONFIG_USB_XHCI_PCI=y
+CONFIG_USB_STORAGE=y
+CONFIG_USB_UAS=y
+CONFIG_USB_HID=y
+CONFIG_HID=y
+CONFIG_HID_GENERIC=y
+
+# --- Rede: Realtek RTL8168 (r8169) ---
+CONFIG_NET=y
+CONFIG_PACKET=y
+CONFIG_UNIX=y
+CONFIG_INET=y
+CONFIG_NETDEVICES=y
+CONFIG_NET_CORE=y
+CONFIG_MII=y
+CONFIG_R8169=y
+CONFIG_INET_DIAG=y
+
+# --- pinmux Cherry Trail (mux de SD/eMMC/I2C) ---
+CONFIG_PINCTRL=y
+CONFIG_PINCTRL_CHERRYVIEW=y
+CONFIG_PINCTRL_INTEL=y
+
+# --- Filesystems necessarios ao boot/persistencia ---
+CONFIG_EXT4_FS=y
+CONFIG_EXT4_FS_POSIX_ACL=y
+CONFIG_FAT_FS=y
+CONFIG_VFAT_FS=y
+CONFIG_MSDOS_FS=y
+CONFIG_ISO9660_FS=y
+CONFIG_TMPFS=y
+CONFIG_TMPFS_POSIX_ACL=y
+CONFIG_OVERLAY_FS=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_NLS=y
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_ISO8859_1=y
+CONFIG_NLS_UTF8=y
+
+# --- SquashFS (rootfs comprimido read-only p/ live em RAM) ---
+CONFIG_MISC_FILESYSTEMS=y
+CONFIG_SQUASHFS=y
+CONFIG_SQUASHFS_XZ=y
+CONFIG_SQUASHFS_ZSTD=y
+CONFIG_SQUASHFS_LZO=y
+CONFIG_SQUASHFS_FILE_DIRECT=y
+
+# --- Execucao / processos ---
+CONFIG_BINFMT_ELF=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_EPOLL=y
+CONFIG_SIGNALFD=y
+CONFIG_TIMERFD=y
+CONFIG_EVENTFD=y
+CONFIG_FUTEX=y
+CONFIG_MULTIUSER=y
+
+# --- EFI (boot UEFI + efivarfs p/ instalacao) ---
+CONFIG_EFI=y
+CONFIG_EFI_STUB=y
+CONFIG_EFIVAR_FS=y
+CONFIG_RELOCATABLE=y
+
+# ============================================================
+#  Correcoes (tinyconfig desliga estes por padrao)
+# ============================================================
+CONFIG_PRINTK=y
+CONFIG_SHMEM=y
+CONFIG_WLAN=n
+CONFIG_SYSCTL=y
+CONFIG_PROC_SYSCTL=y
+CONFIG_SWAP=y
+CONFIG_AIO=y
+CONFIG_INOTIFY_USER=y
+CONFIG_FW_LOADER=y
+CONFIG_ELF_CORE=y
+
+# --- Desligados de proposito (nao usados na box) ---
+# CONFIG_MODULES
+# CONFIG_DRM / CONFIG_I915
+# CONFIG_MEI
+# CONFIG_WMI
+# CONFIG_SOUND
+# CONFIG_ATA / CONFIG_SATA

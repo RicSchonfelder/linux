@@ -1,0 +1,85 @@
+#!/bin/busybox sh
+# ============================================================
+#  linux-install  -  instala o sistema PERMANENTE em um disco
+#
+#  Uso:  linux-install /dev/sdX      (ou /dev/mmcblkX)
+#
+#  Cria:
+#    p1  512 MB  FAT32  (rotulo BOOT)  -> EFI + kernel + initrd + squashfs
+#    p2  resto   ext2   (rotulo PERSIST) -> camada gravavel permanente
+#  Instala o bootloader EFI e o grub.cfg. Boot = live + persistencia.
+# ============================================================
+set -e
+TARGET="$1"
+[ -b "$TARGET" ] || { echo "uso: linux-install /dev/sdX"; exit 1; }
+
+BOOTMNT=/mnt/target-boot
+DATAMNT=/mnt/target-data
+BOOTSRC=/mnt/media          # midia de boot (ISO/pendrive)
+
+echo "!! ATENCAO: isto vai APAGAR TODOS os dados de $TARGET"
+printf "para confirmar digite APAGAR: "
+read -r c
+[ "$c" = "APAGAR" ] || { echo "cancelado."; exit 1; }
+
+# --- 1) particiona (DOS/MBR: p1 EFI, p2 dados) ---
+echo ">> particionando $TARGET"
+(
+  echo o
+  echo n; echo p; echo 1; echo; echo +512M
+  echo t; echo ef
+  echo n; echo p; echo 2; echo; echo
+  echo a; echo 1
+  echo w
+) | fdisk "$TARGET" >/dev/null
+blockdev --rereadpt "$TARGET" 2>/dev/null || sleep 2
+
+P1="${TARGET}1"; P2="${TARGET}2"
+case "$TARGET" in *mmcblk*|*nvme*) P1="${TARGET}p1"; P2="${TARGET}p2";; esac
+
+# --- 2) formata ---
+echo ">> formatando $P1 (FAT32/BOOT) e $P2 (ext2/PERSIST)"
+mkfs.vfat -F 32 -n BOOT "$P1" >/dev/null
+mkfs.ext2 -F -L PERSIST "$P2" >/dev/null
+
+# --- 3) monta e copia ---
+mkdir -p "$BOOTMNT" "$DATAMNT"
+mount "$P1" "$BOOTMNT"
+mount "$P2" "$DATAMNT"
+
+echo ">> copiando bootloader EFI"
+mkdir -p "$BOOTMNT/EFI/BOOT"
+cp /usr/share/linux/BOOTX64.EFI "$BOOTMNT/EFI/BOOT/BOOTX64.EFI"
+
+echo ">> copiando kernel, initrd e sistema"
+mkdir -p "$BOOTMNT/boot/grub" "$BOOTMNT/linux"
+cp /boot/vmlinuz    "$BOOTMNT/boot/vmlinuz"
+cp /boot/initrd.img "$BOOTMNT/boot/initrd.img"
+if [ -f "$BOOTSRC/linux/rootfs.squashfs" ]; then
+    cp "$BOOTSRC/linux/rootfs.squashfs" "$BOOTMNT/linux/rootfs.squashfs"
+else
+    echo "ERRO: rootfs.squashfs nao encontrado em $BOOTSRC/linux/"; exit 1
+fi
+
+echo ">> gravando grub.cfg"
+cat > "$BOOTMNT/boot/grub/grub.cfg" <<'EOF'
+set timeout=3
+set default=0
+menuentry "Linux (custom, tvbox) - PERMANENTE" {
+    linux  /boot/vmlinuz linuxmode=live persist=auto quiet console=tty0 console=ttyS0,115200
+    initrd /boot/initrd.img
+}
+menuentry "Linux (custom, tvbox) - LIVE (RAM, sem gravar)" {
+    linux  /boot/vmlinuz linuxmode=live persist=none quiet console=tty0
+    initrd /boot/initrd.img
+}
+EOF
+
+# --- 4) estrutura de persistencia ---
+mkdir -p "$DATAMNT/linux-upper" "$DATAMNT/linux-work" "$DATAMNT/home"
+
+sync
+umount "$BOOTMNT"
+umount "$DATAMNT"
+echo ">> INSTALACAO CONCLUIDA em $TARGET"
+echo "   Reinicie e selecione o disco na BIOS/UEFI."

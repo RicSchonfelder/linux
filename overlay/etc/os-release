@@ -1,0 +1,7 @@
+NAME="Linux"
+PRETTY_NAME="Linux (custom, tvbox)"
+ID=linux
+VERSION="0.1"
+VERSION_ID="0.1"
+HOME_URL="https://github.com/ricschonfelder/linux"
+BUG_REPORT_URL="https://github.com/ricschonfelder/linux/issues"

@@ -1,0 +1,19 @@
+#!/bin/busybox sh
+# network - sobe interfaces ethernet via DHCP
+case "$1" in
+  start)
+    for i in /sys/class/net/e*; do
+        [ -e "$i" ] || continue
+        d=${i##*/}
+        /sbin/ifconfig "$d" up 2>/dev/null
+        /sbin/udhcpc -b -i "$d" -q -t 8 -s /usr/share/udhcpc/default.script >/dev/null 2>&1 &
+    done
+    ;;
+  stop)
+    for i in /sys/class/net/e*; do
+        [ -e "$i" ] || continue
+        d=${i##*/}
+        /sbin/udhcpc -i "$d" -q -n -R -s /usr/share/udhcpc/default.script >/dev/null 2>&1
+    done
+    ;;
+esac

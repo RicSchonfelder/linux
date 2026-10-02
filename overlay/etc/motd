@@ -1,0 +1,9 @@
+
+
+    Linux (custom, tvbox)  -  servidor headless
+
+    Host : linux      Usuario: root      Senha: linux
+    Acesso remoto:  ssh root@<ip>       (dropbear na porta 22)
+    IA / dev     :  opencode-install && opencode
+    Atualizacoes :  linux-update
+

@@ -1,0 +1,17 @@
+#!/bin/busybox sh
+# dropbear - servidor SSH
+case "$1" in
+  start)
+    /bin/busybox mkdir -p /etc/dropbear /run
+    /bin/busybox chmod 700 /etc/dropbear
+    # -R gera chaves de host se faltarem
+    /usr/sbin/dropbear -R -p 22
+    /bin/busybox echo "dropbear: iniciado na porta 22"
+    ;;
+  stop)
+    /bin/busybox killall dropbear 2>/dev/null
+    ;;
+  restart)
+    $0 stop; sleep 1; $0 start
+    ;;
+esac

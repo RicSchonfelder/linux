@@ -1,0 +1,22 @@
+#!/bin/busybox sh
+# opencode-install - instala/atualiza o opencode (glibc, variante baseline
+# para CPUs sem AVX2, como o Atom x5-Z8350 da tvbox) via GitHub Releases.
+set -e
+DEST=/opt/opencode
+REPO="anomalyco/opencode"
+ASSET="opencode-linux-x64-baseline.tar.gz"
+URL="https://github.com/${REPO}/releases/latest/download/${ASSET}"
+TGZ="/tmp/opencode-$$.tar.gz"
+
+/bin/busybox mkdir -p "$DEST" /tmp
+echo ">> baixando opencode (baseline, glibc) do GitHub..."
+if ! /bin/busybox wget -q -O "$TGZ" "$URL"; then
+    echo "ERRO: falha ao baixar. Verifique a conexao." >&2
+    exit 1
+fi
+/bin/busybox tar -xzf "$TGZ" -C "$DEST"
+/bin/busybox rm -f "$TGZ"
+[ -f "$DEST/opencode" ] || { echo "ERRO: binario nao encontrado no pacote" >&2; exit 1; }
+/bin/busybox chmod +x "$DEST/opencode"
+/bin/busybox ln -sf "$DEST/opencode" /usr/local/bin/opencode
+echo ">> instalado:"; /usr/local/bin/opencode --version 2>&1 | head -1

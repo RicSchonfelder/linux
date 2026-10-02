@@ -1,0 +1,19 @@
+# artefatos de build (gerados)
+src/
+out/
+rootfs/
+initramfs/
+iso/
+artifacts/
+build/config/.config.generated
+
+# kernel / binarios
+*.o
+*.a
+*.ko
+*.tar.xz
+*.tar.bz2
+
+# temporarios
+*.swp
+.DS_Store

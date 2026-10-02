@@ -1,0 +1,41 @@
+#!/bin/busybox sh
+# linux-update - recebe atualizacoes do sistema via GitHub Releases
+# Repo: https://github.com/ricschonfelder/linux
+# Pacote esperado: linux-rootfs-<ver>.tar.gz + linux-rootfs-<ver>.sha256
+set -e
+REPO="ricschonfelder/linux"
+BASE="https://github.com/${REPO}/releases"
+CUR="$(cat /etc/linux-version 2>/dev/null || echo 0.1)"
+echo ">> versao atual: $CUR"
+
+# descobre a ultima tag via API (busybox wget + grep)
+API="https://api.github.com/repos/${REPO}/releases/latest"
+TAG="$(/bin/busybox wget -qO- "$API" 2>/dev/null | grep -m1 '"tag_name"' | sed 's/.*: *"//; s/".*//')"
+[ -n "$TAG" ] || { echo "ERRO: nao consegui consultar o GitHub." >&2; exit 1; }
+echo ">> ultima versao: $TAG"
+
+if [ "$TAG" = "$CUR" ]; then
+    echo ">> ja esta atualizado."
+    exit 0
+fi
+
+TMP=/tmp/linux-update-$$
+mkdir -p "$TMP"
+PKG="linux-rootfs-${TAG}.tar.gz"
+echo ">> baixando $PKG..."
+/bin/busybox wget -q -O "$TMP/$PKG" "$BASE/latest/download/$PKG" || {
+    echo "ERRO: download falhou." >&2; exit 1; }
+/bin/busybox wget -q -O "$TMP/$PKG.sha256" "$BASE/latest/download/$PKG.sha256" 2>/dev/null || true
+
+if [ -s "$TMP/$PKG.sha256" ]; then
+    ( cd "$TMP" && /bin/busybox sha256sum -c "$PKG.sha256" ) || {
+        echo "ERRO: checksum invalido." >&2; exit 1; }
+fi
+
+echo ">> aplicando atualizacao (backup em /var/backup)..."
+mkdir -p /var/backup
+/bin/busybox tar -C / -czf "/var/backup/pre-${TAG}.tar.gz" etc usr/local 2>/dev/null || true
+/bin/busybox tar -C / -xzf "$TMP/$PKG"
+echo "$TAG" > /etc/linux-version
+rm -rf "$TMP"
+echo ">> atualizado para $TAG. Reinicie os servicos ou a maquina."
