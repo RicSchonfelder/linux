@@ -22,11 +22,11 @@ search --no-floppy --file --set=root /boot/vmlinuz
 if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 
 menuentry "Linux (custom, tvbox) - LIVE em RAM [padrao]" {
-    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=LABEL=$ISO_LABEL loglevel=3 quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=LABEL=$ISO_LABEL quiet loglevel=2 console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
-    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=LABEL=$ISO_LABEL loglevel=3 quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=LABEL=$ISO_LABEL quiet loglevel=2 console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - Verbose (debug)" {

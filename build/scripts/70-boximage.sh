@@ -38,11 +38,11 @@ set timeout=5
 search --no-floppy --file --set=root /boot/vmlinuz
 if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 menuentry "Linux (custom, tvbox) - PERMANENTE" {
-    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=UUID=$UUID loglevel=3 quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
-    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=UUID=$UUID loglevel=3 quiet console=tty0
+    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0
     initrd /boot/initrd.img
 }
 EOF
