@@ -52,6 +52,13 @@ cp -a "$LOADER" lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 [ -f /etc/ssl/certs/ca-certificates.crt ] && \
     cp -a /etc/ssl/certs/ca-certificates.crt etc/ssl/certs/
 
+# ---------- firmware (NIC Realtek r8169 da tvbox) ----------
+mkdir -p lib/firmware/rtl_nic
+if ls /lib/firmware/rtl_nic/*.fw >/dev/null 2>&1; then
+    cp -a /lib/firmware/rtl_nic/. lib/firmware/rtl_nic/
+    echo ">> firmware rtl_nic: $(ls lib/firmware/rtl_nic | wc -l) arquivos"
+fi
+
 # ---------- overlay (arquivos de configuracao) ----------
 echo ">> aplicando overlay"
 cp -a "$ROOT/overlay/." "$ROOTFS/"

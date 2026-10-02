@@ -38,6 +38,12 @@ media_ok() {
     return 1
 }
 try_mount() {
+    # tenta read-write primeiro (necessario p/ o persist.ext4 em loop)
+    $BB mount "$1" /mnt/media 2>/dev/null && return 0
+    for t in vfat ext4 ext2 iso9660; do
+        $BB mount -t "$t" "$1" /mnt/media 2>/dev/null && return 0
+    done
+    # fallback read-only
     $BB mount -o ro "$1" /mnt/media 2>/dev/null && return 0
     for t in iso9660 vfat ext4 ext2; do
         $BB mount -t "$t" -o ro "$1" /mnt/media 2>/dev/null && return 0
@@ -93,11 +99,13 @@ $BB mount -t squashfs -o loop,ro "$SQFS" /mnt/rootfs || {
     echo "ERRO: falha ao montar squashfs"; exec $BB sh; }
 
 move_mounts() {
-    $BB mkdir -p "$1/proc" "$1/sys" "$1/dev" "$1/run" "$1/tmp"
+    $BB mkdir -p "$1/proc" "$1/sys" "$1/dev" "$1/run" "$1/tmp" "$1/mnt/bootmedia"
     $BB mount --move /proc "$1/proc" 2>/dev/null
     $BB mount --move /sys  "$1/sys"  2>/dev/null
     $BB mount --move /dev  "$1/dev"  2>/dev/null
     $BB mount --move /run  "$1/run"  2>/dev/null
+    # deixa a midia de boot acessivel no sistema (p/ reinstalar no eMMC)
+    $BB mount --move /mnt/media "$1/mnt/bootmedia" 2>/dev/null
 }
 
 # resolve a camada gravavel (upperdir/workdir)
@@ -114,6 +122,19 @@ setup_upper() {
             return 0
         fi
     fi
+    # fallback: arquivo-imagem ext4 em loop (para particao unica FAT)
+    for f in /mnt/media/linux/persist.ext4 /mnt/media/persist.ext4; do
+        if [ -f "$f" ]; then
+            $BB mount -t ext4 -o loop "$f" /mnt/persist 2>/dev/null
+            if $BB mount | $BB grep -q " /mnt/persist "; then
+                $BB mkdir -p /mnt/persist/linux-upper /mnt/persist/linux-work
+                UPPER=/mnt/persist/linux-upper
+                WORK=/mnt/persist/linux-work
+                echo ">> persistencia: $f (PERMANENTE, loop)"
+                return 0
+            fi
+        fi
+    done
     $BB mount -t tmpfs tmpfs /ram
     $BB mkdir -p /ram/upper /ram/work
     UPPER=/ram/upper

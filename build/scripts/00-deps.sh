@@ -10,5 +10,5 @@ $SUDO apt-get install -y -qq \
     cpio rsync xorriso dosfstools mtools \
     qemu-system-x86 syslinux isolinux syslinux-efi syslinux-common \
     grub-efi-amd64-bin grub-pc-bin grub-common \
-    squashfs-tools busybox-static file
+    squashfs-tools busybox-static file linux-firmware
 echo ">> toolchain instalado."

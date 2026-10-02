@@ -23,30 +23,35 @@ Login: `root` / senha `linux`. SSH ja sobe na porta 22 (dropbear).
 
 ## 3. Instalar em definitivo (permanente)
 
-De dentro do sistema live (console ou SSH):
+O esquema usa **uma unica particao** FAT32 (ESP) no disco interno, com a
+persistencia em arquivo ext4 (loop) dentro dela. Faca o boot pelo **pendrive
+(LIVE)** e rode:
 
 ```
 linux-install /dev/mmcblk0      # ou /dev/sdX do disco interno
-# digite APAGAR para confirmar
 ```
 
-O instalador cria:
+O comando copia para a particao do disco: bootloader EFI, kernel, initrd,
+`rootfs.squashfs` e garante o `persist.ext4` (label PERSIST).
 
-| Particao | Tamanho | FS | Rotulo | Uso |
-|----------|---------|----|--------|-----|
-| p1 | 512 MB | FAT32 | BOOT | EFI + kernel + initrd + rootfs.squashfs |
-| p2 | resto | ext2/4 | PERSIST | camada gravavel permanente + /home |
+| Item | Valor |
+|------|-------|
+| Particao | 1x FAT32 (ESP), GPT |
+| Bootloader | `/EFI/BOOT/BOOTX64.EFI` (GRUB standalone) |
+| Sistema | `/linux/rootfs.squashfs` |
+| Persistencia | `/linux/persist.ext4` (ext4, loop, ~3.9 GB) |
 
-No boot, o `/init` detecta a particao `PERSIST` e usa overlayfs com
-`upperdir` nela: **tudo que voce gravar permanece** entre reinicios.
+No boot, o `/init` monta o squashfs (read-only) e usa o `persist.ext4` como
+camada de escrita (overlayfs) — **tudo que voce gravar permanece**.
 
 ## 4. Como funciona a persistencia
 
 ```
-lowerdir = rootfs.squashfs (read-only, comprimido)
-upperdir = /dev/<PERSIST>/linux-upper   (gravavel, permanente)
-workdir  = /dev/<PERSIST>/linux-work
+lowerdir = rootfs.squashfs          (read-only, comprimido)
+upperdir = /linux/persist.ext4      (ext4 em loop, gravavel, permanente)
+workdir  = /linux/persist.ext4
 ```
 
-Sem PERSIST (ou `persist=none`), a camada gravavel fica em RAM e e
-descartada no reboot (modo live puro).
+O `persist.ext4` fica na propria particao FAT (arquivo-imagem). Sem ele
+(ou com `persist=none`), a camada gravavel fica na RAM e e descartada no
+reboot (modo live puro).

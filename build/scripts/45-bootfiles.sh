@@ -14,7 +14,11 @@ cp "$OUT/initrd.img"    "$ROOTFS/boot/initrd.img"
 # config embutida no EFI: acha a particao rotulada BOOT e carrega o grub.cfg
 EMBED="$(mktemp)"
 cat > "$EMBED" <<'EOF'
-search --no-floppy --label BOOT --set=root
+serial --unit=0 --speed=115200
+terminal_input console serial
+terminal_output console serial
+search --no-floppy --file --set=root /boot/vmlinuz
+if [ -z "$root" ]; then search --no-floppy --label BOOT --set=root; fi
 set prefix=($root)/boot/grub
 configfile ($root)/boot/grub/grub.cfg
 EOF
@@ -22,8 +26,10 @@ EOF
 echo ">> gerando BOOTX64.EFI (grub standalone)"
 grub-mkstandalone -O x86_64-efi \
     -o "$ROOTFS/usr/share/linux/BOOTX64.EFI" \
-    --modules="normal linux part_msdos part_gpt fat ext2 search search_label \
-               search_fs_uuid configfile echo test" \
+    --modules="normal linux linuxefi ls search search_label search_fs_uuid \
+               search_fs_file configfile echo test fat ext2 part_gpt part_msdos \
+               serial all_video gfxterm font png video efi_gop efi_uga minicmd \
+               cat halt reboot sleep" \
     "boot/grub/grub.cfg=$EMBED" 2>/dev/null
 rm -f "$EMBED"
 ls -lh "$ROOTFS/usr/share/linux/BOOTX64.EFI"

@@ -16,15 +16,17 @@ cp "$OUT/bzImage-$KVER" "$ISO/boot/vmlinuz"
 cp "$OUT/initrd.img"    "$ISO/boot/initrd.img"
 
 cat > "$ISO/boot/grub/grub.cfg" <<EOF
-set timeout=5
 set default=0
+set timeout=5
+search --no-floppy --file --set=root /boot/vmlinuz
+if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 
 menuentry "Linux (custom, tvbox) - LIVE em RAM [padrao]" {
-    linux  /boot/vmlinuz linuxmode=live quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=auto quiet console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
-menuentry "Linux (custom, tvbox) - Rootdir (squashfs direto)" {
-    linux  /boot/vmlinuz linuxmode=rootdir quiet console=tty0 console=ttyS0,115200
+menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
+    linux  /boot/vmlinuz linuxmode=live persist=none quiet console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - Verbose (debug)" {
