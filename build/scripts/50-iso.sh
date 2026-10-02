@@ -21,16 +21,16 @@ set timeout=5
 search --no-floppy --file --set=root /boot/vmlinuz
 if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 
-menuentry "Linux (custom, tvbox) - LIVE em RAM [padrao]" {
-    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=LABEL=$ISO_LABEL quiet loglevel=2 console=tty0 console=ttyS0,115200
-    initrd /boot/initrd.img
-}
-menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
+menuentry "Linux (custom) - LIVE em RAM (nao grava)" {
     linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=LABEL=$ISO_LABEL quiet loglevel=2 console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
-menuentry "Linux (custom, tvbox) - Verbose (debug)" {
-    linux  /boot/vmlinuz linuxmode=live console=tty0 console=ttyS0,115200
+menuentry "Linux (custom) - INSTALAR no disco" {
+    linux  /boot/vmlinuz linuxmode=install persist=none linuxmedia=LABEL=$ISO_LABEL console=tty0 console=ttyS0,115200
+    initrd /boot/initrd.img
+}
+menuentry "Linux (custom) - LIVE persistente (se houver persist)" {
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=LABEL=$ISO_LABEL quiet loglevel=2 console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 EOF

@@ -1,0 +1,9 @@
+#!/bin/busybox sh
+# console-theme - fonte Terminus16 + paleta "cor de cafe" no console (tty1)
+F=/usr/share/consolefonts/Lat2-Terminus16.psf
+[ -f "$F" ] && /bin/busybox setfont -C /dev/tty1 "$F" 2>/dev/null
+# paleta 16 cores (cafe): fundo cafe escuro, texto creme
+PAL="\033]P01d120b\033]P1a0522d\033]P26b8e23\033]P3b8860b\033]P48b7355\033]P5a17c5a\033]P6c9a06a\033]P7e8d8c0\033]P84a362a\033]P9c1440e\033]Pa7a9e3f\033]Pbd9b24c\033]Pc9c8b7a\033]Pdb89273\033]Pee6c9a3\033]Pffff5e1"
+printf "%b" "$PAL" > /dev/tty1 2>/dev/null
+printf "\033[2J\033[H" > /dev/tty1 2>/dev/null
+exit 0

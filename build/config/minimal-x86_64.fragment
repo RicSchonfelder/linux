@@ -186,10 +186,64 @@ CONFIG_INOTIFY_USER=y
 CONFIG_FW_LOADER=y
 CONFIG_ELF_CORE=y
 
-# --- Desligados de proposito (nao usados na box) ---
-# CONFIG_MODULES
-# CONFIG_DRM / CONFIG_I915
+# ============================================================
+#  Drivers GENERICOS (portabilidade: PCs, VMs, reparo e instalacao)
+# ============================================================
+# Armazenamento SATA / NVMe (maioria dos PCs)
+CONFIG_ATA=y
+CONFIG_SATA_AHCI=y
+CONFIG_SATA_AHCI_PLATFORM=y
+CONFIG_ATA_PIIX=y
+CONFIG_ATA_GENERIC=y
+CONFIG_BLK_DEV_NVME=y
+CONFIG_MMC_SDHCI_PCI=y
+# USB legado (EHCI/OHCI/UHCI) + rede via USB
+CONFIG_USB_EHCI_HCD=y
+CONFIG_USB_EHCI_PCI=y
+CONFIG_USB_OHCI_HCD=y
+CONFIG_USB_OHCI_HCD_PCI=y
+CONFIG_USB_UHCI_HCD=y
+CONFIG_USB_USBNET=y
+CONFIG_USB_NET_R8152=y
+CONFIG_USB_NET_CDCETHER=y
+# NICs comuns (alem do r8169)
+CONFIG_E1000=y
+CONFIG_E1000E=y
+CONFIG_IGB=y
+CONFIG_TG3=y
+# Virtio / VM (QEMU, KVM, VirtualBox)
+CONFIG_HYPERVISOR_GUEST=y
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_PCI=y
+CONFIG_VIRTIO_BLK=y
+CONFIG_VIRTIO_NET=y
+CONFIG_VIRTIO_CONSOLE=y
+CONFIG_SCSI_VIRTIO=y
+# Video: framebuffer VESA + i915 + GPU de VM (console grafico basico)
+CONFIG_FB_VESA=y
+CONFIG_DRM=y
+CONFIG_DRM_FBDEV_EMULATION=y
+CONFIG_DRM_I915=y
+CONFIG_DRM_BOCHS=y
+CONFIG_DRM_VIRTIO_GPU=y
+# Filesystems extras
+CONFIG_XFS_FS=y
+CONFIG_BTRFS_FS=y
+CONFIG_EXFAT_FS=y
+CONFIG_NTFS3_FS=y
+CONFIG_UDF_FS=y
+CONFIG_FUSE_FS=y
+# Volume / RAID / cifra (reparo de sistemas)
+CONFIG_BLK_DEV_DM=y
+CONFIG_DM_CRYPT=y
+CONFIG_MD=y
+CONFIG_KEYS=y
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+CONFIG_NFS_V4=y
+
+# --- Desligados de proposito ---
+# CONFIG_MODULES (monolitico)
 # CONFIG_MEI
 # CONFIG_WMI
 # CONFIG_SOUND
-# CONFIG_ATA / CONFIG_SATA

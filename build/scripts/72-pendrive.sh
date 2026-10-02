@@ -34,12 +34,12 @@ serial --unit=0 --speed=115200
 terminal_output console serial
 search --no-floppy --file --set=root /boot/vmlinuz
 if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
-menuentry "Linux (custom, tvbox) - LIVE (persistente)" {
+menuentry "Linux (custom) - LIVE (RAM se nao houver persist)" {
     linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
-menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
-    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0
+menuentry "Linux (custom) - INSTALAR no disco" {
+    linux  /boot/vmlinuz linuxmode=install persist=none linuxmedia=UUID=$UUID console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 EOF
@@ -48,17 +48,21 @@ dd if=/usr/lib/syslinux/mbr/mbr.bin of="$LOOP" bs=440 count=1 conv=notrunc >/dev
 syslinux --install "${LOOP}p1" 2>/dev/null || true
 cp /usr/lib/syslinux/modules/bios/*.c32 "$MNT/" 2>/dev/null || true
 cat > "$MNT/syslinux.cfg" <<EOF
-DEFAULT linux
+DEFAULT live
 TIMEOUT 50
 PROMPT 0
-LABEL linux
+LABEL live
   KERNEL /boot/vmlinuz
   INITRD /boot/initrd.img
-  APPEND linuxmode=live persist=auto linuxmedia=UUID=$UUID loglevel=3 console=tty0 console=ttyS0,115200
+  APPEND linuxmode=live persist=auto linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0 console=ttyS0,115200
+LABEL instalar
+  KERNEL /boot/vmlinuz
+  INITRD /boot/initrd.img
+  APPEND linuxmode=install persist=none linuxmedia=UUID=$UUID console=tty0 console=ttyS0,115200
 LABEL ram
   KERNEL /boot/vmlinuz
   INITRD /boot/initrd.img
-  APPEND linuxmode=live persist=none linuxmedia=UUID=$UUID loglevel=3 console=tty0
+  APPEND linuxmode=live persist=none linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0
 EOF
 sync
 umount "$MNT"

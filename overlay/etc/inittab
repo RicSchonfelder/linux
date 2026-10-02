@@ -1,4 +1,3 @@
 ::sysinit:/etc/init.d/rcS
-::respawn:/sbin/getty -L 38400 tty1
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r

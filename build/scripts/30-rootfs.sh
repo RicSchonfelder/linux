@@ -59,6 +59,23 @@ if ls /lib/firmware/rtl_nic/*.fw >/dev/null 2>&1; then
     echo ">> firmware rtl_nic: $(ls lib/firmware/rtl_nic | wc -l) arquivos"
 fi
 
+# ---------- ferramentas de instalacao/reparo (sgdisk, efibootmgr) ----------
+for b in sgdisk efibootmgr; do
+    [ -x "/usr/sbin/$b" ] && cp -a "/usr/sbin/$b" usr/sbin/
+done
+for l in libuuid.so.1 libpopt.so.0 libstdc++.so.6; do
+    [ -e "/lib/x86_64-linux-gnu/$l" ] && cp -aL "/lib/x86_64-linux-gnu/$l" lib/x86_64-linux-gnu/
+done
+echo ">> ferramentas: $(ls usr/sbin | tr '\n' ' ')"
+
+# ---------- fonte de console (Terminus16) ----------
+mkdir -p usr/share/consolefonts
+if [ -f /usr/share/consolefonts/Lat2-Terminus16.psf.gz ]; then
+    gunzip -c /usr/share/consolefonts/Lat2-Terminus16.psf.gz \
+        > usr/share/consolefonts/Lat2-Terminus16.psf
+    echo ">> fonte console: Terminus16"
+fi
+
 # ---------- overlay (arquivos de configuracao) ----------
 echo ">> aplicando overlay"
 cp -a "$ROOT/overlay/." "$ROOTFS/"
@@ -70,12 +87,13 @@ curl -sL "https://github.com/$OC_REPO/releases/latest/download/$OC_ASSET" \
     | tar -xz -C opt/opencode
 chmod 755 opt/opencode/opencode
 ln -sf /opt/opencode/opencode usr/local/bin/opencode
+ln -sf /opt/opencode/opencode usr/bin/opencode
 
 # ---------- permissoes ----------
 chmod 700 etc/dropbear root root/.ssh
 chmod 600 etc/shadow root/.ssh/authorized_keys
 chmod 755 etc/init.d/rcS etc/init.d/network etc/init.d/dropbear
-chmod 755 usr/local/bin/opencode-install usr/local/bin/linux-update usr/local/bin/linux-install
+chmod 755 usr/local/bin/opencode-install usr/local/bin/linux-update usr/local/bin/linux-install usr/local/bin/linux-setup usr/local/bin/console-theme
 chmod 755 usr/share/udhcpc/default.script
 ln -sf /proc/mounts etc/mtab
 

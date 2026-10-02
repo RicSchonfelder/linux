@@ -1,0 +1,122 @@
+#!/bin/busybox sh
+# ============================================================
+#  Instalador Linux (custom) - PT-BR
+#  Instala o sistema em UMA particao FAT32 (ESP) + persistencia.
+#  Roda no modo LIVE (pendrive/ISO). Menu de texto, sem dependencias.
+# ============================================================
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+BB=/bin/busybox
+SRC=/mnt/bootmedia
+[ "$(id -u)" = 0 ] || { echo "Execute como root."; exit 1; }
+[ -f "$SRC/linux/rootfs.squashfs" ] || { echo "ERRO: nao achei $SRC/linux/rootfs.squashfs"; exit 1; }
+
+cab(){ clear 2>/dev/null || printf '\033c'; }
+linha(){ echo "------------------------------------------------------------"; }
+titulo(){ cab; echo "============================================================"; echo "   Linux (custom) - Instalador   [modo PT-BR]"; echo "============================================================"; }
+
+# ---- 1) escolher disco ----
+titulo
+echo "Discos disponiveis:"; n=0
+for d in /sys/block/sd* /sys/block/mmcblk* /sys/block/nvme*; do
+    [ -e "$d" ] || continue
+    name=$(basename "$d"); case "$name" in loop*|ram*|sr*) continue;; esac
+    sz=$(( $(cat "$d/size" 2>/dev/null || echo 0) / 2048 ))
+    md=$(cat "$d/device/model" 2>/dev/null)
+    n=$((n+1)); eval "DISCO$n=$name"
+    printf "  %d) /dev/%s   %s MB   %s\n" "$n" "$name" "$sz" "$md"
+done
+[ "$n" -gt 0 ] || { echo "Nenhum disco encontrado."; exit 1; }
+printf "\nEscolha o numero do disco: "; read -r op
+eval "ALVO=/dev/\$DISCO$op"
+[ -b "$ALVO" ] || { echo "Opcao invalida."; exit 1; }
+case "$ALVO" in *mmcblk*|*nvme*) P1="${ALVO}p1";; *) P1="${ALVO}1";; esac
+
+# ---- 2) confirmar ----
+titulo
+echo "ATENCAO: TODOS os dados de $ALVO serao APAGADOS."
+printf "Digite APAGAR para confirmar: "; read -r conf
+[ "$conf" = "APAGAR" ] || { echo "Cancelado."; exit 1; }
+
+# ---- 3) dados do sistema ----
+titulo
+printf "Nome da maquina (hostname) [linux]: "; read -r HOST; [ -n "$HOST" ] || HOST=linux
+printf "Usuario [root]: "; read -r USER; [ -n "$USER" ] || USER=root
+printf "Senha: "; stty -echo 2>/dev/null; read -r P1S; stty echo 2>/dev/null; echo
+printf "Confirme a senha: "; stty -echo 2>/dev/null; read -r P2S; stty echo 2>/dev/null; echo
+[ "$P1S" = "$P2S" ] || { echo "Senhas diferentes. Abortado."; exit 1; }
+[ -n "$P1S" ] || { echo "Senha vazia. Abortado."; exit 1; }
+printf "Fuso horario [America/Sao_Paulo]: "; read -r TZ; [ -n "$TZ" ] || TZ=America/Sao_Paulo
+
+# ---- 4) particionar (GPT, 1 FAT32 ESP) ----
+titulo; echo "Particionando $ALVO (GPT, uma particao FAT32)..."
+sgdisk -Z "$ALVO" >/dev/null 2>&1 || true
+sgdisk -o "$ALVO" >/dev/null
+sgdisk -n 1:2048:0 -t 1:ef00 -c 1:ESP "$ALVO" >/dev/null
+blockdev --rereadpt "$ALVO" 2>/dev/null || sleep 2
+mkfs.vfat -F 32 -n BOOT "$P1" >/dev/null
+
+# ---- 5) copiar arquivos ----
+echo "Copiando bootloader, kernel, initrd e sistema..."
+MNT=/mnt/destino; mkdir -p "$MNT"; mount "$P1" "$MNT"
+mkdir -p "$MNT/EFI/BOOT" "$MNT/boot/grub" "$MNT/linux"
+[ -f "$SRC/EFI/BOOT/BOOTX64.EFI" ] && cp -f "$SRC/EFI/BOOT/BOOTX64.EFI" "$MNT/EFI/BOOT/BOOTX64.EFI"
+cp -f "$SRC/boot/vmlinuz"    "$MNT/boot/vmlinuz"    2>/dev/null || cp -f /boot/vmlinuz    "$MNT/boot/vmlinuz"
+cp -f "$SRC/boot/initrd.img" "$MNT/boot/initrd.img" 2>/dev/null || cp -f /boot/initrd.img "$MNT/boot/initrd.img"
+cp -f "$SRC/linux/rootfs.squashfs" "$MNT/linux/rootfs.squashfs"
+
+UUID=$($BB blkid "$P1" | $BB sed -n 's/.*UUID="\([^"]*\)".*/\1/p')
+cat > "$MNT/boot/grub/grub.cfg" <<EOF
+set default=0
+set timeout=3
+serial --unit=0 --speed=115200
+terminal_output console serial
+search --no-floppy --file --set=root /boot/vmlinuz
+if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
+menuentry "Linux (custom) - PERMANENTE" {
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0 console=ttyS0,115200
+    initrd /boot/initrd.img
+}
+menuentry "Linux (custom) - LIVE (RAM)" {
+    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=UUID=$UUID quiet loglevel=2 console=tty0
+    initrd /boot/initrd.img
+}
+EOF
+
+# ---- 6) persistencia (imagem ext4 em loop) ----
+if [ ! -f "$MNT/linux/persist.ext4" ]; then
+    echo "Criando persistencia (persist.ext4)..."
+    dd if=/dev/zero of="$MNT/linux/persist.ext4" bs=1M count=3900 status=none
+    mkfs.ext2 -F -L PERSIST "$MNT/linux/persist.ext4" >/dev/null
+fi
+
+# ---- 7) configuracao (via overlay upper, gravada no persist) ----
+echo "Aplicando hostname/usuario/senha/fuso..."
+PM=/mnt/persist_inst; mkdir -p "$PM"; mount -o loop "$MNT/linux/persist.ext4" "$PM"
+U="$PM/linux-upper"; mkdir -p "$U/etc" "$U/root" "$U/home"
+echo "$HOST" > "$U/etc/hostname"
+{ echo "127.0.0.1 localhost"; echo "127.0.1.1 $HOST"; } > "$U/etc/hosts"
+echo "$TZ" > "$U/etc/TZ"
+$BB echo "export TZ=$TZ" > "$U/etc/profile.d-tz" 2>/dev/null || true
+
+RH=$($BB cryptpw -m sha512 "$P1S")
+if [ "$USER" = "root" ]; then
+    printf 'root:%s:19000:0:99999:7:::\n' "$RH" > "$U/etc/shadow"
+    printf 'root:x:0:0:root:/root:/bin/sh\n' > "$U/etc/passwd"
+    printf 'root:x:0:\n' > "$U/etc/group"
+else
+    UH=$($BB cryptpw -m sha512 "$P1S")
+    printf 'root:%s:19000:0:99999:7:::\n%s:%s:19000:0:99999:7:::\n' "$RH" "$USER" "$UH" > "$U/etc/shadow"
+    printf 'root:x:0:0:root:/root:/bin/sh\n%s:x:1000:1000:Usuario:/home/%s:/bin/sh\n' "$USER" "$USER" > "$U/etc/passwd"
+    printf 'root:x:0:\n%s:x:1000:\n' "$USER" > "$U/etc/group"
+    mkdir -p "$U/home/$USER"
+fi
+
+sync; umount "$PM"
+umount "$MNT"
+sync
+titulo
+echo "INSTALACAO CONCLUIDA em $ALVO."
+echo "Hostname: $HOST   Usuario: $USER"
+echo "Remova o pendrive e reinicie. (pode demorar alguns segundos)"
+printf "\nPressione ENTER para reiniciar agora: "; read -r _
+reboot

@@ -8,12 +8,25 @@
 /bin/busybox mount -t tmpfs tmpfs /run 2>/dev/null
 /bin/busybox mount -t tmpfs tmpfs /tmp 2>/dev/null
 /bin/busybox hostname -F /etc/hostname 2>/dev/null || /bin/busybox hostname linux
-[ -f /etc/sysctl.conf ] && /bin/busybox sysctl -p /etc/sysctl.conf 2>/dev/null
+[ -f /etc/TZ ] && export TZ="$(cat /etc/TZ)"
 
+# tema do console (fonte + paleta)
+[ -x /usr/local/bin/console-theme ] && /usr/local/bin/console-theme
+
+# servicos
 /etc/init.d/network start
 /etc/init.d/dropbear start
 
-# console serial (se existir)
-if [ -c /dev/ttyS0 ]; then
-    /sbin/getty -L 115200 ttyS0 vt100 >/dev/null 2>&1 &
+# ---- modo INSTALADOR ----
+if /bin/busybox grep -q "linuxmode=install" /proc/cmdline 2>/dev/null; then
+    if [ -c /dev/ttyS0 ]; then
+        /usr/local/bin/linux-setup < /dev/tty1 2>&1 | /bin/busybox tee /dev/ttyS0 > /dev/tty1
+    else
+        /usr/local/bin/linux-setup < /dev/tty1 > /dev/tty1 2>&1
+    fi
+    exit 0
 fi
+
+# ---- consoles normais (tty1 HDMI + ttyS0 serial) ----
+[ -c /dev/ttyS0 ] && { while true; do /sbin/getty -L 115200 ttyS0 vt100; done; } &
+( while true; do /sbin/getty -L 38400 tty1; done; ) &
