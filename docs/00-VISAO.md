@@ -37,5 +37,6 @@ opencode, que roda **na RAM a partir de um pendrive** e tambem pode ser
 - [x] Instalador permanente (`linux-install`) + persistencia (particao PERSIST)
 - [x] Boot validado no QEMU: overlay + dropbear:22 + login
 - [x] opencode validado no rootfs (Bun baseline, glibc)
-- [ ] Repositorio GitHub + releases
+- [x] Repositorio GitHub privado (`github.com/RicSchonfelder/linux`)
+- [ ] Release v0.1 com a ISO
 - [ ] Teste em hardware real (tvbox)
