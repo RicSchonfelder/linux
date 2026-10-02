@@ -25,27 +25,28 @@ mount "$P1" "$MNT" 2>/dev/null || mount -t vfat "$P1" "$MNT"
 mkdir -p "$MNT/EFI/BOOT" "$MNT/boot/grub" "$MNT/linux"
 
 echo ">> bootloader / kernel / initrd"
-cp -f /usr/share/linux/BOOTX64.EFI "$MNT/EFI/BOOT/BOOTX64.EFI"
-cp -f /boot/vmlinuz    "$MNT/boot/vmlinuz"
-cp -f /boot/initrd.img "$MNT/boot/initrd.img"
+cp -f "$SRC/EFI/BOOT/BOOTX64.EFI" "$MNT/EFI/BOOT/BOOTX64.EFI"
+cp -f "$SRC/boot/vmlinuz"    "$MNT/boot/vmlinuz"
+cp -f "$SRC/boot/initrd.img" "$MNT/boot/initrd.img"
 
 echo ">> sistema (rootfs.squashfs)"
 cp -f "$SRC/linux/rootfs.squashfs" "$MNT/linux/rootfs.squashfs"
 
 echo ">> grub.cfg"
-cat > "$MNT/boot/grub/grub.cfg" <<'EOF'
+UUID="$(blkid "$P1" | sed -n 's/.*UUID="\([^"]*\)".*/\1/p')"
+cat > "$MNT/boot/grub/grub.cfg" <<EOF
 set default=0
 set timeout=5
 serial --unit=0 --speed=115200
 terminal_output console serial
 search --no-floppy --file --set=root /boot/vmlinuz
-if [ -z "$root" ]; then search --no-floppy --label BOOT --set=root; fi
+if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 menuentry "Linux (custom, tvbox) - PERMANENTE" {
-    linux  /boot/vmlinuz linuxmode=live persist=auto quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=UUID=$UUID loglevel=3 quiet console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
-    linux  /boot/vmlinuz linuxmode=live persist=none quiet console=tty0
+    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=UUID=$UUID loglevel=3 quiet console=tty0
     initrd /boot/initrd.img
 }
 EOF

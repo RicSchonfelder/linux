@@ -50,9 +50,28 @@ try_mount() {
     done
     return 1
 }
+# resolve linuxmedia=UUID=xxx / LABEL=xxx para um /dev/xxx
+resolve_media() {
+    case "$MEDIA_DEV" in
+      UUID=*)  want="${MEDIA_DEV#UUID=}"
+               for d in /dev/sr0 /dev/sd[a-z] /dev/sd*[0-9] /dev/mmcblk*p[0-9] /dev/nvme*p[0-9]; do
+                   [ -b "$d" ] || continue
+                   $BB blkid "$d" 2>/dev/null | $BB grep -qi "$want" && { echo "$d"; return 0; }
+               done ;;
+      LABEL=*) want="${MEDIA_DEV#LABEL=}"
+               for d in /dev/sr0 /dev/sd[a-z] /dev/sd*[0-9] /dev/mmcblk*p[0-9] /dev/nvme*p[0-9]; do
+                   [ -b "$d" ] || continue
+                   $BB blkid "$d" 2>/dev/null | $BB grep -qi "LABEL=\"$want\"" && { echo "$d"; return 0; }
+               done ;;
+      /*)      [ -b "$MEDIA_DEV" ] && { echo "$MEDIA_DEV"; return 0; } ;;
+    esac
+    return 1
+}
 find_media() {
-    if [ -n "$MEDIA_DEV" ] && [ -b "$MEDIA_DEV" ]; then
-        try_mount "$MEDIA_DEV" && media_ok /mnt/media && { echo "$MEDIA_DEV"; return 0; }
+    RESOLVED=""
+    [ -n "$MEDIA_DEV" ] && RESOLVED="$(resolve_media)"
+    if [ -n "$RESOLVED" ]; then
+        try_mount "$RESOLVED" && media_ok /mnt/media && { echo "$RESOLVED"; return 0; }
         $BB umount /mnt/media 2>/dev/null
     fi
     for dev in /dev/sr0 /dev/sda /dev/sdb /dev/sdc /dev/sdd \
@@ -79,7 +98,14 @@ find_persist() {
     return 1
 }
 
-MEDIA="$(find_media)"
+MEDIA=""
+TRIES=0
+while [ "$TRIES" -lt 15 ]; do
+    MEDIA="$(find_media)"
+    [ -n "$MEDIA" ] && break
+    TRIES=$(( TRIES + 1 ))
+    $BB sleep 1
+done
 if [ -z "$MEDIA" ]; then
     echo "ERRO: midia de boot (rootfs.squashfs) nao encontrada."
     $BB cat /proc/partitions 2>/dev/null

@@ -10,7 +10,7 @@ echo ">> gerando rootfs.squashfs (xz)"
 rm -rf "$ISO"
 mkdir -p "$ISO/boot/grub" "$ISO/linux"
 mksquashfs "$ROOT/rootfs" "$ISO/linux/rootfs.squashfs" \
-    -comp xz -noappend -no-progress >/dev/null
+    -comp xz -noappend -no-progress -all-root >/dev/null
 
 cp "$OUT/bzImage-$KVER" "$ISO/boot/vmlinuz"
 cp "$OUT/initrd.img"    "$ISO/boot/initrd.img"
@@ -22,11 +22,11 @@ search --no-floppy --file --set=root /boot/vmlinuz
 if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 
 menuentry "Linux (custom, tvbox) - LIVE em RAM [padrao]" {
-    linux  /boot/vmlinuz linuxmode=live persist=auto quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=LABEL=$ISO_LABEL loglevel=3 quiet console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
-    linux  /boot/vmlinuz linuxmode=live persist=none quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=LABEL=$ISO_LABEL loglevel=3 quiet console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - Verbose (debug)" {

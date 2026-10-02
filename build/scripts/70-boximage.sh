@@ -21,6 +21,7 @@ sgdisk -u 1:$GUID "$IMG" >/dev/null
 
 LOOP="$(losetup --find --show --partscan "$IMG")"
 mkfs.vfat -F32 -n BOOT "${LOOP}p1" >/dev/null
+UUID="$(blkid "${LOOP}p1" | sed -n 's/.*UUID="\([^"]*\)".*/\1/p')"
 MNT=/mnt/boximg
 mkdir -p "$MNT"
 mount "${LOOP}p1" "$MNT"
@@ -37,11 +38,11 @@ set timeout=5
 search --no-floppy --file --set=root /boot/vmlinuz
 if [ -z "\$root" ]; then search --no-floppy --label BOOT --set=root; fi
 menuentry "Linux (custom, tvbox) - PERMANENTE" {
-    linux  /boot/vmlinuz linuxmode=live persist=auto quiet console=tty0 console=ttyS0,115200
+    linux  /boot/vmlinuz linuxmode=live persist=auto linuxmedia=UUID=$UUID loglevel=3 quiet console=tty0 console=ttyS0,115200
     initrd /boot/initrd.img
 }
 menuentry "Linux (custom, tvbox) - RAM (sem gravar)" {
-    linux  /boot/vmlinuz linuxmode=live persist=none quiet console=tty0
+    linux  /boot/vmlinuz linuxmode=live persist=none linuxmedia=UUID=$UUID loglevel=3 quiet console=tty0
     initrd /boot/initrd.img
 }
 EOF
